@@ -131,14 +131,24 @@ rem ===============================================================
 echo.
 echo ERRO: nao encontrei o Python neste computador.
 echo.
-echo Se voce ja usa o Docling em um ambiente virtual, informe o caminho
-echo do python.exe dele antes de rodar este arquivo. Exemplo:
+echo O Python e a unica coisa que precisa ser instalada a mao. O resto
+echo (bibliotecas, Docling) este arquivo instala sozinho depois.
 echo.
-echo     set CONVERSOR_PYTHON=C:\Users\Voce\docling\.venv\Scripts\python.exe
+echo COMO INSTALAR
+echo   Opcao 1 - site oficial:
+echo       https://www.python.org/downloads/
+echo       Na primeira tela, MARQUE "Add python.exe to PATH" antes de instalar.
+echo.
+echo   Opcao 2 - Windows 10/11, em um Prompt de Comando:
+echo       winget install Python.Python.3.12
+echo.
+echo Depois de instalar, FECHE esta janela e clique no iniciar_app.bat
+echo novamente (o Windows so enxerga o Python novo em uma janela nova).
+echo.
+echo Se voce ja tem o Docling em um ambiente virtual, da para apontar
+echo direto para ele, sem instalar nada:
+echo     set CONVERSOR_PYTHON=C:\Users\Voce\projeto\.venv\Scripts\python.exe
 echo     iniciar_app.bat
-echo.
-echo Ou instale o Python 3.10+ em https://www.python.org/downloads/
-echo marcando a opcao "Add Python to PATH".
 echo.
 pause
 exit /b 1

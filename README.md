@@ -16,6 +16,7 @@ pasta `dados/` deste projeto.
 - [Requisitos](#requisitos)
 - [Instalação e uso no Windows](#instalação-e-uso-no-windows)
 - [Instalação e uso no Linux/macOS](#instalação-e-uso-no-linuxmacos)
+- [Levando para outro computador](#levando-para-outro-computador)
 - [Como usar a interface](#como-usar-a-interface)
 - [Opções de processamento](#opções-de-processamento)
 - [Instalando como aplicativo (PWA)](#instalando-como-aplicativo-pwa)
@@ -103,6 +104,27 @@ iniciar_app.bat
 Mesma lógica do Windows: se o Docling já estiver no seu Python, ele pergunta se
 pode reaproveitar esse ambiente; caso contrário cria a `.venv` e instala tudo.
 Para apontar um ambiente específico: `CONVERSOR_PYTHON=/caminho/para/python ./iniciar_app.sh`.
+
+## Levando para outro computador
+
+Só uma coisa precisa ser instalada à mão: **o Python**. Todo o resto o
+`iniciar_app.bat` resolve sozinho.
+
+| Passo | O que fazer | Automático? |
+|---|---|---|
+| 1 | Instalar o **Python 3.10+** ([python.org](https://www.python.org/downloads/), marcando **"Add python.exe to PATH"**, ou `winget install Python.Python.3.12`) | ❌ manual, uma vez por computador |
+| 2 | Baixar a pasta do projeto (**Code → Download ZIP** e extrair) | ❌ manual |
+| 3 | Duplo clique em `iniciar_app.bat` → cria a `.venv` e instala Docling, PyTorch, PyMuPDF, FastAPI | ✅ automático (10 a 20 min, ~3 GB) |
+| 4 | Primeira conversão → o Docling baixa os modelos de layout e tabelas | ✅ automático (mais alguns minutos, ~1 GB) |
+
+A partir daí o app abre em segundos e funciona **sem internet**.
+
+Precisa de internet apenas nos passos 3 e 4, e de uns 8 GB livres em disco
+com folga.
+
+> Não adianta copiar a pasta já instalada de um notebook para outro: a `.venv`
+> guarda caminhos absolutos da máquina de origem e costuma quebrar. Copie o
+> projeto sem a pasta `.venv` e rode o `iniciar_app.bat` no destino.
 
 ## Como usar a interface
 
