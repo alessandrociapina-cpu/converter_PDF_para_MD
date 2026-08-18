@@ -53,15 +53,39 @@ Este projeto ataca isso em três frentes:
 
 ## Instalação e uso no Windows
 
-1. Baixe/clone esta pasta para o computador.
+1. Baixe a pasta do projeto para o computador (no GitHub: **Code → Download ZIP**,
+   depois extraia; ou `git clone`).
 2. Dê **duplo clique em `iniciar_app.bat`**.
-   - Na primeira vez ele cria o ambiente virtual `.venv` e instala tudo
-     (`fastapi`, `uvicorn`, `pymupdf`, `docling`). Isso leva alguns minutos.
-   - Nas próximas vezes o app abre em segundos.
 3. O navegador abre sozinho em <http://localhost:8000>.
 4. Deixe a janela preta do servidor aberta enquanto usar o aplicativo.
 
+Na primeira execução o script se vira sozinho, em um de dois caminhos:
+
+- **Você já tem o Docling instalado** — ele detecta, pergunta se pode usar esse
+  mesmo ambiente e instala só o servidor web (poucos MB). Nada de baixar o
+  Docling e o PyTorch de novo.
+- **Você não tem o Docling** — ele cria o ambiente virtual `.venv` dentro da
+  pasta do projeto e instala tudo (alguns minutos e alguns GB).
+
+Nas próximas vezes o app abre em segundos.
+
 Opcional: `criar_atalho.bat` coloca um atalho na Área de Trabalho.
+
+### Se o seu Docling está em um ambiente virtual
+
+Quando o Docling não está no Python padrão do sistema e sim em uma `.venv` sua,
+informe o caminho do `python.exe` dela antes de iniciar:
+
+```bat
+set CONVERSOR_PYTHON=C:\Users\SeuUsuario\pasta\.venv\Scripts\python.exe
+iniciar_app.bat
+```
+
+Para descobrir esse caminho, ative o ambiente onde você usa o Docling e rode:
+
+```bat
+python -c "import sys; print(sys.executable)"
+```
 
 Para usar outra porta:
 
@@ -76,8 +100,9 @@ iniciar_app.bat
 ./iniciar_app.sh
 ```
 
-O script cria a `.venv`, instala as dependências e sobe o servidor em
-<http://localhost:8000>.
+Mesma lógica do Windows: se o Docling já estiver no seu Python, ele pergunta se
+pode reaproveitar esse ambiente; caso contrário cria a `.venv` e instala tudo.
+Para apontar um ambiente específico: `CONVERSOR_PYTHON=/caminho/para/python ./iniciar_app.sh`.
 
 ## Como usar a interface
 
@@ -205,6 +230,7 @@ A documentação interativa fica em <http://localhost:8000/docs>.
 | `CONVERSOR_LIMITE_MB` | `2048` | Tamanho máximo de upload |
 | `CONVERSOR_RETENCAO_HORAS` | `24` | Idade a partir da qual conversões antigas são apagadas ao iniciar |
 | `CONVERSOR_SIMULADO` | — | `1` usa extração de texto do PyMuPDF no lugar do Docling (só para testar a interface) |
+| `CONVERSOR_PYTHON` | — | Caminho do `python.exe`/`python` a ser usado pelo `iniciar_app` (útil quando o Docling está em outra `.venv`) |
 
 ## Uso pelo terminal (opcional)
 
@@ -227,9 +253,10 @@ cancelamento, a montagem do arquivo final e a limpeza dos PDFs temporários.
 ## Solução de problemas
 
 **"Docling não instalado" no topo da página**
-Instale no ambiente virtual do projeto:
-`.venv\Scripts\python.exe -m pip install docling` (Windows) ou
-`.venv/bin/python -m pip install docling`.
+O app está rodando em um ambiente Python onde o Docling não existe. Duas saídas:
+instale nele (`.venv\Scripts\python.exe -m pip install docling`) ou aponte o
+app para o ambiente onde o Docling já está, com `CONVERSOR_PYTHON`
+(veja [Se o seu Docling está em um ambiente virtual](#se-o-seu-docling-está-em-um-ambiente-virtual)).
 
 **A primeira conversão demora muito para começar**
 O Docling baixa os modelos de layout/tabelas na primeira execução. Depois disso
