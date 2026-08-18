@@ -51,6 +51,156 @@ class OpcoesConversao:
         return self
 
 
+# ---------------------------------------------------------------------------
+# Diagnostico de texto selecionavel (decide se o OCR e necessario)
+# ---------------------------------------------------------------------------
+
+# Uma pagina precisa de pelo menos este tanto de caracteres para ser
+# considerada "com texto". Cabecalho e numero de pagina soltos ficam abaixo
+# disso, entao uma pagina digitalizada com carimbo de protocolo nao passa.
+MINIMO_CARACTERES_POR_PAGINA = 100
+
+# Quantas paginas sao amostradas no maximo. 40 amostras espalhadas descrevem
+# bem um documento de 800 paginas e a leitura leva menos de um segundo.
+MAXIMO_PAGINAS_AMOSTRADAS = 40
+
+
+@dataclass
+class DiagnosticoTexto:
+    """Resultado da checagem de texto selecionavel de um PDF."""
+
+    total_paginas: int = 0
+    paginas_amostradas: int = 0
+    paginas_com_texto: int = 0
+    paginas_digitalizadas: int = 0
+    paginas_vazias: int = 0
+    media_caracteres: float = 0.0
+    proporcao_com_texto: float = 0.0
+    classificacao: str = "indefinido"  # texto | misto | digitalizado | indefinido
+    ocr_recomendado: bool = False
+    resumo: str = ""
+
+    def para_dicionario(self) -> dict:
+        return {
+            "total_paginas": self.total_paginas,
+            "paginas_amostradas": self.paginas_amostradas,
+            "paginas_com_texto": self.paginas_com_texto,
+            "paginas_digitalizadas": self.paginas_digitalizadas,
+            "paginas_vazias": self.paginas_vazias,
+            "media_caracteres": round(self.media_caracteres, 1),
+            "proporcao_com_texto": round(self.proporcao_com_texto, 3),
+            "percentual_com_texto": round(self.proporcao_com_texto * 100, 1),
+            "classificacao": self.classificacao,
+            "ocr_recomendado": self.ocr_recomendado,
+            "resumo": self.resumo,
+        }
+
+
+def _paginas_para_amostrar(total: int, maximo: int) -> list[int]:
+    """Escolhe indices espalhados pelo documento, sempre com inicio e fim."""
+
+    if total <= maximo:
+        return list(range(total))
+    passo = total / maximo
+    indices = sorted({int(i * passo) for i in range(maximo)} | {0, total - 1})
+    return [i for i in indices if i < total]
+
+
+def diagnosticar_texto(
+    pdf_path: str | Path,
+    maximo_amostras: int = MAXIMO_PAGINAS_AMOSTRADAS,
+) -> DiagnosticoTexto:
+    """Verifica se o PDF tem texto selecionavel ou se precisara de OCR.
+
+    Le apenas uma amostra de paginas com o PyMuPDF (rapido, sem carregar o
+    Docling) e classifica o documento em tres casos praticos:
+
+    * ``texto``        -- da para converter sem OCR;
+    * ``misto``        -- parte digitalizada, parte com texto;
+    * ``digitalizado`` -- sem OCR o Markdown sai vazio.
+
+    Paginas em branco (sem texto e sem imagem) sao ignoradas na conta, para
+    nao contaminarem o diagnostico de documentos com folhas de separacao.
+    """
+
+    doc = pymupdf.open(str(pdf_path))
+    try:
+        total = len(doc)
+        diagnostico = DiagnosticoTexto(total_paginas=total)
+        if total == 0:
+            diagnostico.resumo = "O PDF não possui páginas legíveis."
+            return diagnostico
+
+        indices = _paginas_para_amostrar(total, max(1, maximo_amostras))
+        total_caracteres = 0
+
+        for indice in indices:
+            pagina = doc[indice]
+            try:
+                caracteres = len(pagina.get_text("text").strip())
+            except Exception:
+                caracteres = 0
+            total_caracteres += caracteres
+
+            if caracteres >= MINIMO_CARACTERES_POR_PAGINA:
+                diagnostico.paginas_com_texto += 1
+                continue
+
+            try:
+                tem_imagem = bool(pagina.get_images(full=True))
+            except Exception:
+                tem_imagem = False
+
+            if tem_imagem:
+                diagnostico.paginas_digitalizadas += 1
+            else:
+                diagnostico.paginas_vazias += 1
+
+        diagnostico.paginas_amostradas = len(indices)
+        diagnostico.media_caracteres = total_caracteres / len(indices)
+
+        com_conteudo = diagnostico.paginas_com_texto + diagnostico.paginas_digitalizadas
+        if com_conteudo == 0:
+            diagnostico.classificacao = "indefinido"
+            diagnostico.ocr_recomendado = False
+            diagnostico.resumo = (
+                "Não foi possível classificar: as páginas analisadas estão em branco."
+            )
+            return diagnostico
+
+        proporcao = diagnostico.paginas_com_texto / com_conteudo
+        diagnostico.proporcao_com_texto = proporcao
+        percentual = round(proporcao * 100)
+
+        if proporcao >= 0.85:
+            diagnostico.classificacao = "texto"
+            diagnostico.ocr_recomendado = False
+            diagnostico.resumo = (
+                f"O PDF tem texto selecionável ({percentual}% das páginas analisadas, "
+                f"média de {diagnostico.media_caracteres:.0f} caracteres por página). "
+                "O OCR não é necessário."
+            )
+        elif proporcao >= 0.15:
+            diagnostico.classificacao = "misto"
+            diagnostico.ocr_recomendado = True
+            diagnostico.resumo = (
+                f"O PDF é misto: apenas {percentual}% das páginas analisadas têm texto "
+                "selecionável; as demais parecem digitalizadas. Sem OCR, essas páginas "
+                "sairão vazias no Markdown."
+            )
+        else:
+            diagnostico.classificacao = "digitalizado"
+            diagnostico.ocr_recomendado = True
+            diagnostico.resumo = (
+                "O PDF parece ser digitalizado (imagens de páginas, sem texto "
+                "selecionável). Sem OCR o Markdown sai praticamente vazio."
+            )
+
+        return diagnostico
+    finally:
+        doc.close()
+
+
 class OuvinteProgresso:
     """Interface de notificacao. Todos os metodos sao opcionais."""
 
@@ -215,7 +365,7 @@ def processar_pdf_em_lotes(
     ouvinte.mensagem("Mapeando pontos de corte seguros...")
     intervalos = encontrar_pontos_de_corte(pdf_path, opcoes, ouvinte)
     if not intervalos:
-        raise ValueError("O PDF nao possui paginas legiveis.")
+        raise ValueError("O PDF não possui páginas legíveis.")
 
     total_paginas = intervalos[-1][1]
     ouvinte.mensagem(

@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .conversor import (
     ConversaoCancelada,
+    DiagnosticoTexto,
     OpcoesConversao,
     OuvinteProgresso,
     processar_pdf_em_lotes,
@@ -34,7 +35,14 @@ PESO_FINALIZACAO = 2.0
 
 MAX_MENSAGENS = 200
 
-STATUS_ATIVOS = {"na_fila", "preparando", "mapeando", "convertendo", "finalizando"}
+STATUS_ATIVOS = {
+    "aguardando_decisao",
+    "na_fila",
+    "preparando",
+    "mapeando",
+    "convertendo",
+    "finalizando",
+}
 STATUS_FINAIS = {"concluido", "erro", "cancelado"}
 
 
@@ -89,6 +97,7 @@ class Tarefa:
             "finalizado_em": None,
             "segundos": 0.0,
             "opcoes": asdict(opcoes),
+            "diagnostico": None,
             "mensagens": [],
         }
 
@@ -106,6 +115,31 @@ class Tarefa:
                 del mensagens[: len(mensagens) - MAX_MENSAGENS]
             self.versao += 1
 
+    def registrar_diagnostico(self, diagnostico: DiagnosticoTexto, precisa_decisao: bool) -> None:
+        """Guarda a checagem de texto selecionavel feita logo apos o upload."""
+        self.atualizar(diagnostico=diagnostico.para_dicionario())
+        self.registrar_mensagem(
+            diagnostico.resumo,
+            "aviso" if diagnostico.ocr_recomendado else "info",
+        )
+        if precisa_decisao:
+            self.atualizar(
+                status="aguardando_decisao",
+                fase="Aguardando sua decisão sobre o OCR",
+            )
+
+    def aplicar_decisao(self, ocr: bool) -> None:
+        """Aplica a escolha do usuario sobre o OCR e libera a conversao."""
+        self.opcoes.ocr = ocr
+        self.atualizar(
+            status="na_fila",
+            fase="Na fila",
+            opcoes=asdict(self.opcoes),
+        )
+        self.registrar_mensagem(
+            f"Decisão do usuário: OCR {'ligado' if ocr else 'desligado'}."
+        )
+
     def instantaneo(self) -> dict:
         with self._lock:
             estado = dict(self._estado)
@@ -113,6 +147,7 @@ class Tarefa:
             estado["versao"] = self.versao
             estado["cancelamento_solicitado"] = self._cancelar.is_set()
             estado["ativo"] = estado["status"] in STATUS_ATIVOS
+            estado["aguardando_decisao"] = estado["status"] == "aguardando_decisao"
             estado["markdown_disponivel"] = (
                 self.caminho_md.exists() and self.caminho_md.stat().st_size > 0
             )
@@ -126,7 +161,10 @@ class Tarefa:
     # ------------------------------------------------------------- cancelamento
     def solicitar_cancelamento(self) -> None:
         self._cancelar.set()
-        if self.status == "na_fila":
+        if self.status == "aguardando_decisao":
+            # Ainda nao foi para a fila: nao ha trabalhador para interromper.
+            self.atualizar(status="cancelado", fase="Cancelado", finalizado_em=_agora())
+        elif self.status == "na_fila":
             self.atualizar(status="cancelado", fase="Cancelado na fila", finalizado_em=_agora())
         self.registrar_mensagem("Cancelamento solicitado pelo usuario.", "aviso")
 
@@ -223,7 +261,7 @@ class GerenciadorDeTarefas:
             tamanho_pdf=tarefa.caminho_pdf.stat().st_size if tarefa.caminho_pdf.exists() else 0,
             posicao_fila=self._posicao_na_fila(tarefa.id),
         )
-        tarefa.registrar_mensagem("Arquivo recebido. Aguardando na fila de processamento.")
+        tarefa.registrar_mensagem("Na fila de processamento.")
         self._executor.submit(self._executar, tarefa)
 
     def obter(self, id_tarefa: str) -> Tarefa | None:

@@ -31,6 +31,17 @@
     botaoConverter: $('botao-converter'),
     dicaConverter: $('dica-converter'),
 
+    cartaoVerificacao: $('cartao-verificacao'),
+    verificacaoResumo: $('verificacao-resumo'),
+    verificacaoClassificacao: $('verificacao-classificacao'),
+    verificacaoAmostra: $('verificacao-amostra'),
+    verificacaoPercentual: $('verificacao-percentual'),
+    verificacaoCaracteres: $('verificacao-caracteres'),
+    verificacaoNota: $('verificacao-nota'),
+    botaoDecisaoPrincipal: $('botao-decisao-principal'),
+    botaoDecisaoAlternativa: $('botao-decisao-alternativa'),
+    botaoDecisaoCancelar: $('botao-decisao-cancelar'),
+
     cartaoProgresso: $('cartao-progresso'),
     progressoArquivo: $('progresso-arquivo'),
     progressoFase: $('progresso-fase'),
@@ -75,6 +86,7 @@
     inicioCronometro: 0,
     mensagensExibidas: 0,
     envioEmAndamento: false,
+    decisaoOcr: null,
     historico: [],
     promptInstalacao: null,
   };
@@ -237,6 +249,15 @@
       }
       registrarMensagem({ nivel: 'info', texto: 'Upload concluído.', hora: new Date().toISOString() });
       estado.idTarefa = corpo.id;
+
+      if (corpo.aguardando_decisao) {
+        // O servidor analisou o PDF e a escolha de OCR não combina com ele.
+        aplicarEstado(corpo);
+        pararCronometro();
+        mostrarVerificacao(corpo);
+        return;
+      }
+
       aplicarEstado(corpo);
       acompanhar(corpo.id);
     });
@@ -253,6 +274,7 @@
     estado.mensagensExibidas = 0;
     elementos.registroLista.innerHTML = '';
     elementos.cartaoResultado.hidden = true;
+    elementos.cartaoVerificacao.hidden = true;
     elementos.cartaoProgresso.hidden = false;
     elementos.botaoCancelar.hidden = false;
     elementos.barra.className = 'barra';
@@ -304,6 +326,105 @@
       estado.cronometro = null;
     }
   }
+
+  // --------------------------------------------------------- verificação
+  const ROTULOS_CLASSIFICACAO = {
+    texto: 'Texto selecionável',
+    misto: 'Misto',
+    digitalizado: 'Digitalizado',
+    indefinido: 'Indefinido',
+  };
+
+  function mostrarVerificacao(tarefa) {
+    const diagnostico = tarefa.diagnostico || {};
+    const precisaOcr = Boolean(diagnostico.ocr_recomendado);
+
+    elementos.verificacaoResumo.textContent = diagnostico.resumo || '';
+
+    const classificacao = diagnostico.classificacao || 'indefinido';
+    elementos.verificacaoClassificacao.innerHTML = '';
+    const selo = document.createElement('span');
+    selo.className = `verificacao__selo verificacao__selo--${classificacao}`;
+    selo.textContent = ROTULOS_CLASSIFICACAO[classificacao] || classificacao;
+    elementos.verificacaoClassificacao.appendChild(selo);
+
+    elementos.verificacaoAmostra.textContent =
+      `${diagnostico.paginas_amostradas || 0} de ${diagnostico.total_paginas || 0}`;
+    elementos.verificacaoPercentual.textContent =
+      `${(diagnostico.percentual_com_texto ?? 0).toFixed(0)}%`;
+    elementos.verificacaoCaracteres.textContent =
+      `${Math.round(diagnostico.media_caracteres || 0)} / página`;
+
+    if (precisaOcr) {
+      elementos.verificacaoNota.textContent =
+        'Ligar o OCR resolve, mas multiplica o tempo de processamento — em documentos ' +
+        'de centenas de páginas pode levar horas nesta máquina.';
+      elementos.botaoDecisaoPrincipal.textContent = 'Ligar OCR e converter';
+      elementos.botaoDecisaoAlternativa.textContent = 'Converter mesmo assim (sem OCR)';
+      estado.decisaoOcr = { principal: true, alternativa: false };
+    } else {
+      elementos.verificacaoNota.textContent =
+        'Você ligou o OCR, mas este PDF já tem texto selecionável. Desligar deixa a ' +
+        'conversão muito mais rápida, com o mesmo resultado.';
+      elementos.botaoDecisaoPrincipal.textContent = 'Desligar OCR e converter';
+      elementos.botaoDecisaoAlternativa.textContent = 'Manter o OCR ligado';
+      estado.decisaoOcr = { principal: false, alternativa: true };
+    }
+
+    definirBotoesDecisao(true);
+    elementos.cartaoVerificacao.hidden = false;
+    elementos.cartaoVerificacao.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function decidir(ocr) {
+    if (!estado.idTarefa) return;
+    definirBotoesDecisao(false);
+    try {
+      const resposta = await fetch(`/api/conversoes/${estado.idTarefa}/iniciar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocr }),
+      });
+      if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+      const dados = await resposta.json();
+
+      elementos.campoOcr.checked = ocr;
+      elementos.cartaoVerificacao.hidden = true;
+      iniciarCronometro();
+      aplicarEstado(dados);
+      acompanhar(dados.id);
+    } catch (erro) {
+      avisar('Não foi possível iniciar a conversão.', 'erro');
+      definirBotoesDecisao(true);
+    }
+  }
+
+  function definirBotoesDecisao(habilitados) {
+    elementos.botaoDecisaoPrincipal.disabled = !habilitados;
+    elementos.botaoDecisaoAlternativa.disabled = !habilitados;
+    elementos.botaoDecisaoCancelar.disabled = !habilitados;
+  }
+
+  elementos.botaoDecisaoPrincipal.addEventListener('click', () => {
+    decidir(estado.decisaoOcr ? estado.decisaoOcr.principal : false);
+  });
+  elementos.botaoDecisaoAlternativa.addEventListener('click', () => {
+    decidir(estado.decisaoOcr ? estado.decisaoOcr.alternativa : false);
+  });
+  elementos.botaoDecisaoCancelar.addEventListener('click', async () => {
+    if (!estado.idTarefa) return;
+    definirBotoesDecisao(false);
+    try {
+      const resposta = await fetch(`/api/conversoes/${estado.idTarefa}/cancelar`, { method: 'POST' });
+      const dados = await resposta.json();
+      elementos.cartaoVerificacao.hidden = true;
+      aplicarEstado(dados);
+    } catch (erro) {
+      avisar('Não foi possível cancelar.', 'erro');
+    } finally {
+      definirBotoesDecisao(true);
+    }
+  });
 
   // ------------------------------------------------------- acompanhamento
   function acompanhar(id) {

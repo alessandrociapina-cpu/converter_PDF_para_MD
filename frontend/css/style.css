@@ -384,6 +384,30 @@ input[type="range"] { flex: 1; accent-color: var(--azul); min-width: 110px; }
 .registro__lista li[data-nivel="aviso"] .registro__texto { color: var(--ambar); }
 .registro__lista li[data-nivel="erro"] .registro__texto { color: var(--vermelho); }
 
+/* ---------------------------------------------------------- verificação */
+.cartao--verificacao {
+  border-color: color-mix(in srgb, var(--ambar) 55%, var(--borda));
+  background:
+    linear-gradient(color-mix(in srgb, var(--ambar) 5%, transparent),
+                    color-mix(in srgb, var(--ambar) 5%, transparent)),
+    var(--fundo-cartao);
+}
+.passo--alerta { background: color-mix(in srgb, var(--ambar) 18%, transparent); color: var(--ambar); }
+.verificacao__resumo { font-size: .96rem; font-weight: 600; margin-bottom: .9rem; }
+.verificacao__selo {
+  display: inline-block;
+  padding: .1rem .55rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.verificacao__selo--texto { background: color-mix(in srgb, var(--verde) 18%, transparent); color: var(--verde); }
+.verificacao__selo--misto { background: color-mix(in srgb, var(--ambar) 20%, transparent); color: var(--ambar); }
+.verificacao__selo--digitalizado { background: color-mix(in srgb, var(--vermelho) 16%, transparent); color: var(--vermelho); }
+.verificacao__selo--indefinido { background: var(--fundo-suave); color: var(--texto-suave); }
+
 /* ------------------------------------------------------------ resultado */
 .cartao--resultado { border-color: color-mix(in srgb, var(--verde) 45%, var(--borda)); }
 .resultado__resumo { color: var(--texto-suave); font-size: .92rem; }

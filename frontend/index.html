@@ -114,6 +114,40 @@
       </div>
     </section>
 
+    <!-- VERIFICAÇÃO: texto selecionável x OCR -->
+    <section class="cartao cartao--verificacao" id="cartao-verificacao" aria-labelledby="titulo-verificacao" hidden>
+      <h2 id="titulo-verificacao" class="cartao__titulo"><span class="passo passo--alerta">!</span> Verificação do PDF</h2>
+
+      <p class="verificacao__resumo" id="verificacao-resumo">—</p>
+
+      <dl class="indicadores">
+        <div class="indicador">
+          <dt>Tipo de documento</dt>
+          <dd id="verificacao-classificacao">—</dd>
+        </div>
+        <div class="indicador">
+          <dt>Páginas analisadas</dt>
+          <dd id="verificacao-amostra">—</dd>
+        </div>
+        <div class="indicador">
+          <dt>Com texto selecionável</dt>
+          <dd id="verificacao-percentual">—</dd>
+        </div>
+        <div class="indicador">
+          <dt>Média de caracteres</dt>
+          <dd id="verificacao-caracteres">—</dd>
+        </div>
+      </dl>
+
+      <p class="cartao__dica" id="verificacao-nota"></p>
+
+      <div class="cartao__rodape cartao__rodape--acoes">
+        <button type="button" id="botao-decisao-principal" class="botao botao--primario">—</button>
+        <button type="button" id="botao-decisao-alternativa" class="botao botao--secundario">—</button>
+        <button type="button" id="botao-decisao-cancelar" class="botao botao--fantasma">Cancelar envio</button>
+      </div>
+    </section>
+
     <!-- ETAPA 3: progresso -->
     <section class="cartao cartao--progresso" id="cartao-progresso" aria-labelledby="titulo-progresso" hidden>
       <h2 id="titulo-progresso" class="cartao__titulo"><span class="passo">3</span> Andamento</h2>

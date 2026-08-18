@@ -17,11 +17,11 @@ import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .conversor import MODO_SIMULADO, OpcoesConversao
+from .conversor import MODO_SIMULADO, OpcoesConversao, diagnosticar_texto
 from .tarefas import GerenciadorDeTarefas
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -136,6 +136,56 @@ async def criar_conversao(
         gerenciador.remover(tarefa.id)
         raise HTTPException(status_code=400, detail="Arquivo vazio.")
 
+    # Checagem rapida (PyMuPDF, sem carregar o Docling): o PDF tem texto
+    # selecionavel ou vai precisar de OCR? Roda em thread separada para nao
+    # travar o servidor durante a leitura das paginas amostradas.
+    try:
+        diagnostico = await asyncio.to_thread(diagnosticar_texto, tarefa.caminho_pdf)
+    except Exception as exc:  # noqa: BLE001 - diagnostico nunca deve impedir a conversao
+        tarefa.registrar_mensagem(
+            f"Não foi possível verificar o texto do PDF ({exc}). Seguindo com as opções escolhidas.",
+            "aviso",
+        )
+        gerenciador.enfileirar(tarefa)
+        return tarefa.instantaneo()
+
+    precisa_decisao = _precisa_confirmar_ocr(diagnostico, opcoes)
+    tarefa.registrar_diagnostico(diagnostico, precisa_decisao)
+
+    if not precisa_decisao:
+        gerenciador.enfileirar(tarefa)
+    return tarefa.instantaneo()
+
+
+def _precisa_confirmar_ocr(diagnostico, opcoes: OpcoesConversao) -> bool:
+    """Decide se vale interromper o usuario antes de comecar a conversao.
+
+    Dois casos justificam a pergunta:
+
+    * o PDF precisa de OCR e o OCR esta desligado -- sem confirmar, o usuario
+      espera a conversao inteira para receber um Markdown vazio;
+    * o PDF ja tem texto e o OCR foi ligado -- o OCR multiplicaria o tempo de
+      CPU sem ganho nenhum.
+    """
+
+    if diagnostico.ocr_recomendado and not opcoes.ocr:
+        return True
+    if opcoes.ocr and diagnostico.classificacao == "texto":
+        return True
+    return False
+
+
+@app.post("/api/conversoes/{id_tarefa}/iniciar")
+async def iniciar_conversao(id_tarefa: str, ocr: bool = Body(False, embed=True)) -> dict:
+    """Confirma a escolha de OCR feita na interface e libera a conversao."""
+
+    tarefa = _tarefa_ou_404(id_tarefa)
+    if tarefa.instantaneo()["status"] != "aguardando_decisao":
+        raise HTTPException(
+            status_code=409,
+            detail="Esta conversão não está aguardando decisão.",
+        )
+    tarefa.aplicar_decisao(bool(ocr))
     gerenciador.enfileirar(tarefa)
     return tarefa.instantaneo()
 

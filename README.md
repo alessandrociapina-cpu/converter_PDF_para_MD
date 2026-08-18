@@ -19,6 +19,7 @@ pasta `dados/` deste projeto.
 - [Levando para outro computador](#levando-para-outro-computador)
 - [Como usar a interface](#como-usar-a-interface)
 - [Opções de processamento](#opções-de-processamento)
+- [Verificação automática de OCR](#verificação-automática-de-ocr)
 - [Instalando como aplicativo (PWA)](#instalando-como-aplicativo-pwa)
 - [Como o pipeline funciona](#como-o-pipeline-funciona)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -131,12 +132,15 @@ com folga.
 1. **Escolha o PDF** — arraste para a área indicada ou clique para procurar.
    O nome do arquivo de saída aparece na hora: `contrato.pdf` → `contrato.md`.
 2. **Ajuste o processamento** — páginas por lote, OCR, tabelas, corte inteligente.
-3. **Clique em "Converter para Markdown"** e acompanhe:
+3. **Clique em "Converter para Markdown"**. Antes de começar, o app analisa o PDF
+   e, se a escolha de OCR não combinar com o documento, mostra o cartão
+   **Verificação do PDF** com as opções (veja abaixo).
+4. Acompanhe:
    - percentual e barra de progresso;
    - fase atual (mapeando cortes → convertendo lotes → montagem final);
    - páginas processadas, lote atual e KB de Markdown acumulados;
    - registro de mensagens, lote a lote.
-4. **Pré-visualize** o Markdown renderizado ou **baixe o `.md`**.
+5. **Pré-visualize** o Markdown renderizado ou **baixe o `.md`**.
 
 Dá para cancelar a qualquer momento: o processamento para ao fim do lote atual.
 
@@ -145,9 +149,47 @@ Dá para cancelar a qualquer momento: o processamento para ao fim do lote atual.
 | Opção | Padrão | Para que serve |
 |---|---|---|
 | **Páginas por lote** | 50 | Menos páginas por lote = menos RAM por vez. Em 8 GB, fique entre 25 e 50. |
-| **Reconhecimento óptico (OCR)** | desligado | Ligue **apenas** para PDFs digitalizados (imagem). Em PDFs com texto selecionável ele só multiplica o tempo de CPU. |
+| **Reconhecimento óptico (OCR)** | desligado | Ligue **apenas** para PDFs digitalizados (imagem). Em PDFs com texto selecionável ele só multiplica o tempo de CPU. O app confere isso sozinho e avisa antes de começar. |
 | **Estrutura de tabelas** | ligado | Converte tabelas do PDF em tabelas Markdown em vez de texto solto. |
 | **Corte inteligente** | ligado | Recua até 5 páginas para não partir uma tabela entre dois lotes. Desligue para acelerar o mapeamento em documentos sem tabelas. |
+
+## Verificação automática de OCR
+
+Logo após o upload — antes de carregar o Docling e antes de converter qualquer
+página — o app lê uma amostra do PDF com o PyMuPDF e decide se o documento tem
+texto selecionável ou se é digitalizado.
+
+**Como a amostra é montada:** até 40 páginas distribuídas ao longo do documento
+(sempre incluindo a primeira e a última). Em um PDF de 800 páginas isso leva
+menos de um segundo.
+
+**Como cada página é classificada:**
+
+| Situação da página | Contagem |
+|---|---|
+| 100 caracteres ou mais de texto extraível | com texto |
+| menos que isso, mas com imagem | digitalizada |
+| sem texto e sem imagem | em branco (ignorada na conta) |
+
+**Como o documento é classificado**, pela proporção de páginas com texto entre
+as que têm conteúdo:
+
+| Proporção | Classificação | OCR |
+|---|---|---|
+| 85% ou mais | **Texto selecionável** | desnecessário |
+| entre 15% e 85% | **Misto** | recomendado |
+| abaixo de 15% | **Digitalizado** | necessário |
+
+O app só interrompe você quando a escolha e o documento não combinam:
+
+- **PDF digitalizado com OCR desligado** — converter assim produziria um `.md`
+  praticamente vazio depois de muito tempo de processamento. O cartão oferece
+  *Ligar OCR e converter*, *Converter mesmo assim* ou *Cancelar envio*.
+- **PDF com texto e OCR ligado** — o OCR multiplicaria o tempo de CPU sem
+  nenhum ganho. O cartão oferece *Desligar OCR e converter* ou *Manter o OCR*.
+
+Quando a escolha combina com o documento, a conversão começa direto e o
+diagnóstico aparece apenas como uma linha no registro de mensagens.
 
 ## Instalando como aplicativo (PWA)
 
@@ -222,7 +264,8 @@ converter_PDF_para_MD/
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/api/saude` | Estado do servidor e se o Docling está instalado |
-| `POST` | `/api/conversoes` | Envia o PDF (`multipart/form-data`) e enfileira a conversão |
+| `POST` | `/api/conversoes` | Envia o PDF (`multipart/form-data`), analisa o texto e enfileira a conversão. Se a resposta vier com `aguardando_decisao: true`, a conversão espera a confirmação do OCR |
+| `POST` | `/api/conversoes/{id}/iniciar` | Confirma o OCR (`{"ocr": true\|false}`) e libera a conversão que estava aguardando |
 | `GET` | `/api/conversoes` | Lista as conversões da sessão |
 | `GET` | `/api/conversoes/{id}` | Estado atual (percentual, fase, páginas, KB) |
 | `GET` | `/api/conversoes/{id}/eventos` | Fluxo SSE com o progresso em tempo real |
