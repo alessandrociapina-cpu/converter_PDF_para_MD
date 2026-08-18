@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Converta PDFs volumosos em Markdown localmente usando Docling, sem sair do navegador.">
+  <meta name="theme-color" content="#1f6feb">
+  <title>Conversor PDF para Markdown</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/estatico/icones/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/estatico/icones/icone-192.png">
+  <link rel="stylesheet" href="/estatico/css/style.css">
+</head>
+<body>
+  <a class="pular-para-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="cabecalho">
+    <div class="cabecalho__marca">
+      <img src="/estatico/icones/icone.svg" alt="" width="40" height="40">
+      <div>
+        <h1>Conversor PDF → Markdown</h1>
+        <p class="cabecalho__subtitulo">Processamento local com Docling · otimizado para documentos de 400 a 800+ páginas</p>
+      </div>
+    </div>
+    <div class="cabecalho__acoes">
+      <span id="selo-ambiente" class="selo selo--neutro" title="Estado do servidor local">Verificando ambiente…</span>
+      <button id="botao-instalar" class="botao botao--fantasma" hidden>Instalar app</button>
+    </div>
+  </header>
+
+  <main id="conteudo" class="conteudo">
+
+    <!-- ETAPA 1: seleção do arquivo -->
+    <section class="cartao" id="cartao-envio" aria-labelledby="titulo-envio">
+      <h2 id="titulo-envio" class="cartao__titulo"><span class="passo">1</span> Escolha o PDF</h2>
+
+      <div id="area-solta" class="solta" tabindex="0" role="button"
+           aria-label="Selecionar arquivo PDF. Arraste o arquivo até aqui ou pressione Enter para procurar.">
+        <svg class="solta__icone" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="solta__titulo">Arraste o PDF aqui</p>
+        <p class="solta__ajuda">ou <strong>clique para procurar</strong> no computador</p>
+        <p class="solta__nota">O arquivo é processado na sua máquina. Nada é enviado para a internet.</p>
+        <input type="file" id="entrada-arquivo" accept="application/pdf,.pdf" hidden>
+      </div>
+
+      <div id="arquivo-escolhido" class="arquivo" hidden>
+        <svg class="arquivo__icone" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
+                fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M14 2v5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <div class="arquivo__dados">
+          <p class="arquivo__nome" id="arquivo-nome">—</p>
+          <p class="arquivo__meta">
+            <span id="arquivo-tamanho">—</span>
+            <span aria-hidden="true">·</span>
+            <span>gerará <strong id="arquivo-saida">—</strong></span>
+          </p>
+        </div>
+        <button type="button" id="botao-trocar" class="botao botao--fantasma botao--pequeno">Trocar arquivo</button>
+      </div>
+    </section>
+
+    <!-- ETAPA 2: opções -->
+    <section class="cartao" id="cartao-opcoes" aria-labelledby="titulo-opcoes">
+      <h2 id="titulo-opcoes" class="cartao__titulo"><span class="passo">2</span> Ajuste o processamento</h2>
+
+      <div class="opcoes">
+        <div class="opcao">
+          <label class="opcao__rotulo" for="campo-lote">Páginas por lote</label>
+          <div class="opcao__controle">
+            <input type="range" id="campo-lote-faixa" min="10" max="200" step="5" value="50">
+            <input type="number" id="campo-lote" min="1" max="500" step="1" value="50" class="campo-numero">
+          </div>
+          <p class="opcao__ajuda">Lotes menores usam menos memória RAM. 50 é o equilíbrio recomendado para 8 GB.</p>
+        </div>
+
+        <div class="opcao opcao--interruptor">
+          <label class="interruptor">
+            <input type="checkbox" id="campo-ocr">
+            <span class="interruptor__trilho" aria-hidden="true"></span>
+            <span class="interruptor__texto">Reconhecimento óptico (OCR)</span>
+          </label>
+          <p class="opcao__ajuda">Deixe desligado para PDFs com texto selecionável. Ligar multiplica o tempo de CPU.</p>
+        </div>
+
+        <div class="opcao opcao--interruptor">
+          <label class="interruptor">
+            <input type="checkbox" id="campo-tabelas" checked>
+            <span class="interruptor__trilho" aria-hidden="true"></span>
+            <span class="interruptor__texto">Reconhecer estrutura de tabelas</span>
+          </label>
+          <p class="opcao__ajuda">Converte tabelas do PDF em tabelas Markdown em vez de texto solto.</p>
+        </div>
+
+        <div class="opcao opcao--interruptor">
+          <label class="interruptor">
+            <input type="checkbox" id="campo-corte" checked>
+            <span class="interruptor__trilho" aria-hidden="true"></span>
+            <span class="interruptor__texto">Corte inteligente entre lotes</span>
+          </label>
+          <p class="opcao__ajuda">Recua até 5 páginas para não partir uma tabela ao meio na divisão dos lotes.</p>
+        </div>
+      </div>
+
+      <div class="cartao__rodape">
+        <button type="button" id="botao-converter" class="botao botao--primario" disabled>
+          Converter para Markdown
+        </button>
+        <p class="cartao__dica" id="dica-converter">Escolha um PDF para liberar a conversão.</p>
+      </div>
+    </section>
+
+    <!-- ETAPA 3: progresso -->
+    <section class="cartao cartao--progresso" id="cartao-progresso" aria-labelledby="titulo-progresso" hidden>
+      <h2 id="titulo-progresso" class="cartao__titulo"><span class="passo">3</span> Andamento</h2>
+
+      <div class="progresso__topo">
+        <div>
+          <p class="progresso__arquivo" id="progresso-arquivo">—</p>
+          <p class="progresso__fase" id="progresso-fase" aria-live="polite">Preparando…</p>
+        </div>
+        <p class="progresso__percentual"><span id="progresso-numero">0</span><span class="progresso__simbolo">%</span></p>
+      </div>
+
+      <div class="barra" role="progressbar" aria-labelledby="titulo-progresso"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="barra">
+        <div class="barra__preenchimento" id="barra-preenchimento"></div>
+      </div>
+
+      <ol class="fases" id="fases">
+        <li class="fase" data-fase="mapeando"><span class="fase__marca"></span> Mapeando cortes</li>
+        <li class="fase" data-fase="convertendo"><span class="fase__marca"></span> Convertendo lotes</li>
+        <li class="fase" data-fase="finalizando"><span class="fase__marca"></span> Montagem final</li>
+      </ol>
+
+      <dl class="indicadores">
+        <div class="indicador">
+          <dt>Páginas</dt>
+          <dd id="indicador-paginas">0 / 0</dd>
+        </div>
+        <div class="indicador">
+          <dt>Lote</dt>
+          <dd id="indicador-lotes">0 / 0</dd>
+        </div>
+        <div class="indicador">
+          <dt>Markdown gerado</dt>
+          <dd id="indicador-kb">0 KB</dd>
+        </div>
+        <div class="indicador">
+          <dt>Tempo decorrido</dt>
+          <dd id="indicador-tempo">00:00</dd>
+        </div>
+      </dl>
+
+      <details class="registro" open>
+        <summary>Mensagens do processamento</summary>
+        <ul class="registro__lista" id="registro-lista" aria-live="polite"></ul>
+      </details>
+
+      <div class="cartao__rodape cartao__rodape--acoes">
+        <button type="button" id="botao-cancelar" class="botao botao--perigo botao--pequeno">Cancelar conversão</button>
+      </div>
+    </section>
+
+    <!-- ETAPA 4: resultado -->
+    <section class="cartao cartao--resultado" id="cartao-resultado" aria-labelledby="titulo-resultado" hidden>
+      <h2 id="titulo-resultado" class="cartao__titulo"><span class="passo">✓</span> Markdown pronto</h2>
+      <p class="resultado__resumo" id="resultado-resumo">—</p>
+      <div class="cartao__rodape cartao__rodape--acoes">
+        <a id="botao-baixar" class="botao botao--primario" href="#" download>Baixar arquivo .md</a>
+        <button type="button" id="botao-previa" class="botao botao--secundario">Pré-visualizar</button>
+        <button type="button" id="botao-nova" class="botao botao--fantasma">Converter outro PDF</button>
+      </div>
+    </section>
+
+    <!-- Histórico -->
+    <section class="cartao" id="cartao-historico" aria-labelledby="titulo-historico" hidden>
+      <h2 id="titulo-historico" class="cartao__titulo">Conversões desta sessão</h2>
+      <ul class="historico" id="historico-lista"></ul>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>Tudo roda em <code>localhost</code>. Os PDFs e os Markdown ficam apenas na pasta <code>dados/</code> deste computador.</p>
+  </footer>
+
+  <!-- Modal de pré-visualização -->
+  <dialog id="modal-previa" class="modal" aria-labelledby="modal-titulo">
+    <div class="modal__cabecalho">
+      <h2 id="modal-titulo" class="modal__titulo">Pré-visualização</h2>
+      <div class="modal__acoes">
+        <div class="segmentado" role="tablist" aria-label="Modo de visualização">
+          <button type="button" class="segmentado__item is-ativo" id="aba-renderizado" role="tab" aria-selected="true">Renderizado</button>
+          <button type="button" class="segmentado__item" id="aba-fonte" role="tab" aria-selected="false">Markdown</button>
+        </div>
+        <button type="button" class="botao botao--fantasma botao--pequeno" id="modal-fechar">Fechar</button>
+      </div>
+    </div>
+    <p class="modal__aviso" id="modal-aviso" hidden></p>
+    <div class="modal__corpo">
+      <article class="markdown" id="previa-renderizada"></article>
+      <pre class="fonte" id="previa-fonte" hidden></pre>
+    </div>
+  </dialog>
+
+  <div id="avisos" class="avisos" aria-live="assertive"></div>
+
+  <script src="/estatico/js/markdown.js"></script>
+  <script src="/estatico/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "id": "/",
+  "name": "Conversor PDF para Markdown",
+  "short_name": "PDF para MD",
+  "description": "Converta PDFs volumosos em Markdown localmente, com Docling, direto do navegador.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "any",
+  "background_color": "#f4f6fb",
+  "theme_color": "#1f6feb",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/estatico/icones/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/estatico/icones/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/estatico/icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/estatico/icones/icone-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

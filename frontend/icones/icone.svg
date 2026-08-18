@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Conversor PDF para Markdown">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a84ff"/>
+      <stop offset="1" stop-color="#144ebe"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="113" fill="url(#fundo)"/>
+  <path d="M158 67h149l72 72v132a26 26 0 0 1-26 26H158a26 26 0 0 1-26-26V93a26 26 0 0 1 26-26Z" fill="#ffffff"/>
+  <path d="M307 67l72 72h-72V67Z" fill="#8fb8ff"/>
+  <g fill="#1f6feb">
+    <rect x="174" y="143" width="174" height="23" rx="6"/>
+    <rect x="174" y="189" width="174" height="23" rx="6"/>
+    <rect x="174" y="236" width="113" height="23" rx="6"/>
+  </g>
+  <path d="M233 323h46v82h-46z" fill="#ffffff"/>
+  <path d="M184 389h144l-72 82-72-82Z" fill="#ffffff"/>
+</svg>

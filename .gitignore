@@ -1,0 +1,21 @@
+# Ambiente Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Dados gerados pelo app (PDFs enviados e Markdown produzido)
+dados/
+_temp_lote_*.pdf
+*.log
+
+# Modelos e caches do Docling/HuggingFace
+.cache/
+.docling/
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
